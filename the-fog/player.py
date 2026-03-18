@@ -100,24 +100,23 @@ class Player(pygame.sprite.Sprite):
         size = (80, 40) if current_weapon == "uzi" else (50, 25)
         gun_surf = pygame.transform.scale(gun_base, size)
 
-        # 2. POSITION OFFSET (Moving gun from head to hand)
-        # We shift the rotation pivot point down 15 pixels and right 10 pixels
+       
         hand_offset = pygame.Vector2(10, 15)
 
         m_pos = pygame.mouse.get_pos()
         p_screen_center = self.rect.center - offset
 
-        # If aiming left of player, move gun pivot to the left side
+       
         side_shift = 20 if m_pos[0] > p_screen_center.x else -15
         hand_offset = pygame.Vector2(side_shift, 30)
 
         p_gun_pos = p_screen_center + hand_offset
 
-        # 3. Angle Calculation
+    
         rel_x = m_pos[0] - p_gun_pos.x
         rel_y = m_pos[1] - p_gun_pos.y
         angle = math.degrees(math.atan2(-rel_y, rel_x))
-        # 3. Rotate & Flip
+
         rotated_gun = pygame.transform.rotate(gun_surf, angle)
         if abs(angle) > 90:
             rotated_gun = pygame.transform.flip(rotated_gun, False, True)
