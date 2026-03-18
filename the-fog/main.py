@@ -28,7 +28,7 @@ class Game:
         self.shoot_timer = 0
         self.state = "PLAYING"
 
-        # --- HORROR & WAVE SYSTEM ---
+        # --- WAVE SYSTEM ---
         self.current_wave = 1
         self.enemies_remaining_to_spawn = 20
         self.wave_transition = False
@@ -42,7 +42,7 @@ class Game:
         self.stalker_pos = pygame.math.Vector2(0, 0)
         self.stalker_active = False
 
-        # --- UZI SYSTEM ---
+        # --- UZI SYSTEM 
         self.uzi_unlocked = False
         self.current_weapon = "pistol"
         self.uzi_cost = 50
@@ -51,13 +51,13 @@ class Game:
         self.is_reloading = False
         self.reload_timer = 0
 
-        # --- BOMB SYSTEM ---
+        # --- BOMB SYSTEM 
         self.bomb_count = 3
         self.max_bombs = 3
         self.bomb_cooldown = 0
-        self.bomb_cooldown_max = 3.0  # seconds between throws
+        self.bomb_cooldown_max = 3.0
 
-        # --- CACHED FONTS (fix: was re-allocating every frame) ---
+        # --- CACHED FONT
         self.font_lg = pygame.font.SysFont("Arial", 60, True)
         self.font_xl = pygame.font.SysFont("Arial", 80, True)
         self.font_md = pygame.font.SysFont("Arial", 45)
@@ -87,7 +87,7 @@ class Game:
         except:
             self.tmx_data = None
 
-        # Map is 52x50 tiles at 64px = 3328x3200px — stretch to fill 4096x4096
+        # Map
         self.map_limit = 4096
         if self.tmx_data:
             self.map_pixel_w = self.tmx_data.width  * self.tmx_data.tilewidth
@@ -99,7 +99,7 @@ class Game:
         scaled_tile_w = int((self.tmx_data.tilewidth  if self.tmx_data else 64) * self.tile_scale_x) + 1
         scaled_tile_h = int((self.tmx_data.tileheight if self.tmx_data else 64) * self.tile_scale_y) + 1
 
-        # Pre-bake the entire map onto one surface at startup — zero per-frame scaling cost
+        # --surface--
         self.map_surface = pygame.Surface((self.map_limit, self.map_limit))
         if self.tmx_data:
             for layer in self.tmx_data.visible_layers:
@@ -122,12 +122,11 @@ class Game:
         spawn_static_objects(self.all_sprites, self.collision_sprites)
         spawn_destructibles(self.all_sprites, self.collision_sprites)
 
-        # Store upgrade button rects for accurate click detection
+       
         self._upgrade_rects = {}
 
     def _generate_vignette(self):
-        # Fix: sample every 2px and fill 2x2 blocks — avoids 864k set_at calls
-        for y in range(0, 720, 2):
+            for y in range(0, 720, 2):
             for x in range(0, 1200, 2):
                 dx, dy = abs(x - 600) / 600, abs(y - 360) / 360
                 dist = math.sqrt(dx ** 2 + dy ** 2)
@@ -159,7 +158,6 @@ class Game:
         self.bomb_cooldown = 0
 
         self.player = Player((192, 192), [self.all_sprites], self.collision_sprites)
-        # Fix: reset_game was missing this line, leaving bullet_damage at Player's default
         self.player.bullet_damage = self.gun_damages[0]
         self.player.game = self
         self.setup_tmx_entities()
@@ -171,7 +169,6 @@ class Game:
         if self.is_reloading:
             return
         now = pygame.time.get_ticks()
-        # Fix: UZI fire rate was 0.12 (raw float) compared to ms — now consistently in ms
         fire_rate_ms = 120 if self.current_weapon == "uzi" else int(self.player.fire_rate * 1000)
 
         if now - self.shoot_timer > fire_rate_ms:
@@ -265,16 +262,16 @@ class Game:
         if pygame.mouse.get_pressed()[0]:
             self.shoot()
 
-        # Reloading logic
+        # Reload 
         if self.is_reloading and pygame.time.get_ticks() - self.reload_timer > 2000:
             self.uzi_ammo = self.max_uzi_ammo
             self.is_reloading = False
 
-        # Bomb cooldown tick
+        # Bomb cooldown 
         if self.bomb_cooldown > 0:
             self.bomb_cooldown -= dt
 
-        # --- BOUNDARY & HORROR ---
+        
         limit = self.map_limit
         is_in_fog = (self.player.rect.right > limit or self.player.rect.left < 0 or
                      self.player.rect.bottom > limit or self.player.rect.top < 0)
@@ -307,7 +304,7 @@ class Game:
             if self.player.health < 100:
                 self.player.health += 1 / 60
 
-        # --- BULLET & ENEMY COLLISIONS ---
+        # --- ENEMY COLLISIONS ---
         for b in list(self.bullet_sprites):
             if hasattr(b, 'damage'):
                 e_hits = pygame.sprite.spritecollide(b, self.enemy_sprites, False)
@@ -316,8 +313,7 @@ class Game:
                     e.knockback_vector = b.direction * 500
                     b.kill()
                     if e.health <= 0:
-                        # Fix: removed `and self.current_wave == 5` — boss can be killed on any wave
-                        if getattr(e, 'is_boss', False):
+                         if getattr(e, 'is_boss', False):
                             self.state = "VICTORY_SCREEN"
                         self.player.xp += 10
                         self.total_xp_gained += 10
@@ -342,7 +338,6 @@ class Game:
         # Wave Management
         if len(self.enemy_sprites) == 0 and self.enemies_remaining_to_spawn <= 0 and not self.wave_transition:
             if self.current_wave >= 6:
-                # Final wave cleared — go straight to mission complete
                 self.mission_complete_timer = pygame.time.get_ticks()
                 self.state = "MISSION_COMPLETE"
             else:
@@ -369,15 +364,12 @@ class Game:
     def throw_bomb(self):
         if self.bomb_count <= 0 or self.bomb_cooldown > 0:
             return
-        # Use mouse world-space position as the target directly — no fixed 300px cap
         target = pygame.math.Vector2(pygame.mouse.get_pos()) + self.all_sprites.offset
 
         damage = self.bomb_damages[self.bomb_lv]
         blast_radius = 180 + self.bomb_lv * 30
 
         for e in list(self.enemy_sprites):
-            # Use e.pos (always accurate) — e.rect.center only updates when enemy is within 1000px
-            dist = e.pos.distance_to(target)
             if dist < blast_radius:
                 e.health -= damage
                 kb = e.pos - target
@@ -400,10 +392,10 @@ class Game:
     def draw(self):
         self.display.fill("black")
 
-        # 1. Draw map — blit the visible portion of the pre-baked surface
+    
         ox, oy = int(self.all_sprites.offset.x), int(self.all_sprites.offset.y)
         visible_rect = pygame.Rect(ox, oy, 1200, 720)
-        # Clamp to map bounds so we never sample outside the surface
+    
         clamped = visible_rect.clip(pygame.Rect(0, 0, self.map_limit, self.map_limit))
         if clamped.width > 0 and clamped.height > 0:
             dest_x = clamped.x - ox
@@ -414,12 +406,12 @@ class Game:
         self.all_sprites.custom_draw(self.player)
         self.player.draw_gun(self.display, self.all_sprites.offset, self.current_weapon)
 
-        # 3. Fog walls — limit matches map_limit so tiles fill right up to the fog edge
+        # 3. Fog walls
         limit, thick = self.map_limit, 1920
-        fog_rects = [pygame.Rect(-thick, -thick, limit + thick * 2, thick),  # top
-                     pygame.Rect(-thick, limit,  limit + thick * 2, thick),  # bottom
-                     pygame.Rect(-thick, 0,       thick, limit),             # left
-                     pygame.Rect(limit,  0,       thick, limit)]             # right
+        fog_rects = [pygame.Rect(-thick, -thick, limit + thick * 2, thick),  
+                     pygame.Rect(-thick, limit,  limit + thick * 2, thick),  
+                     pygame.Rect(-thick, 0,       thick, limit),             
+                     pygame.Rect(limit,  0,       thick, limit)]             
         for r in fog_rects:
             r.topleft -= self.all_sprites.offset
             pygame.draw.rect(self.display, (30, 35, 40), r)
@@ -497,7 +489,7 @@ class Game:
         hud_f = self.font_sm.render(f"WAVE: {self.current_wave} | {wp_info}", True, "white")
         self.display.blit(hud_f, (20, 80))
 
-        # Bomb count — orange circles, greyed out when on cooldown or empty
+    
         for i in range(self.max_bombs):
             cx = 20 + i * 22
             if i < self.bomb_count:
@@ -597,13 +589,13 @@ class Game:
                     s.set_alpha(alpha)
                     self.display.blit(s, (600 - s.get_width() // 2, 260 + i * 48))
 
-            # Flavour text
+    
             if elapsed > 2.5:
                 msg = self.font_warn_sm.render("You escaped the fog. For now.", True, (100, 140, 100))
                 msg.set_alpha(min(255, int((elapsed - 2.5) * 180)))
                 self.display.blit(msg, (600 - msg.get_width() // 2, 430))
 
-            # Buttons appear after 3s
+            
             if elapsed > 3.0:
                 self._upgrade_rects["mc_restart"] = self.draw_button("PLAY AGAIN", 510)
                 self._upgrade_rects["mc_quit"]    = self.draw_button("QUIT", 580)
