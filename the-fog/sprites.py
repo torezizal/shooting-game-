@@ -10,8 +10,7 @@ class CameraGroup(pygame.sprite.Group):
         self.shake_amount = 0
 
     def custom_draw(self, player):
-        # Fix: set base offset FIRST, then apply shake on top
-        # (previously shake was applied before offset was set, so it was always overwritten)
+    
         self.offset.x = player.rect.centerx - 600
         self.offset.y = player.rect.centery - 360
 
@@ -190,8 +189,7 @@ class DestructibleObject(pygame.sprite.Sprite):
         self.health = self.max_health = 3
 
     def take_damage(self, amount, groups=None):
-        # Fix: groups parameter was accepted but never used — explosion wired in,
-        # guarded so it's optional until Explosion import is confirmed working
+      
         self.health -= amount
         if self.health <= 0:
             if groups:
